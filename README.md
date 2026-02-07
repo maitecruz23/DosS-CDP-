@@ -2,9 +2,9 @@
 
 ## Laboratorio de Seguridad de Redes - Cisco Discovery Protocol Flooding
 
-**Autor:** [Tu Nombre Completo]  
-**Matrícula:** [Tu Matrícula]  
-**Institución:** [Tu Universidad]  
+**Autor:** Maitte Rodriguez 
+**Matrícula:** 20241165
+**Institución:** ITLA
 **Asignatura:** Seguridad de Redes  
 **Fecha:** Febrero 2026
 
