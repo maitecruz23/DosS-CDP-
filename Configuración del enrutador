@@ -1,0 +1,49 @@
+! Configuración del Router vIOS R1
+! Para el laboratorio de ataque CDP DoS
+! Fecha: Febrero 2026
+
+enable
+configure terminal
+
+! Configuración básica
+hostname R1
+no ip domain lookup
+
+! Configurar interfaz principal hacia el switch
+interface GigabitEthernet0/0/12
+ description Conexion al Switch
+ ip address 11.6.5.1 255.255.255.0
+ no shutdown
+ exit
+
+! Configurar subinterfaz para VLAN nativa (si aplica)
+interface Ethernet0/1.200
+ description VLAN Nativa
+ encapsulation dot1Q 200 native
+ no shutdown
+ exit
+
+! Habilitar CDP (habilitado por defecto, pero se muestra explícitamente)
+cdp run
+
+! Configurar CDP timers (opcional - valores por defecto)
+cdp timer 60
+cdp holdtime 180
+
+! Configurar logging para ver actividad CDP
+logging console informational
+logging buffered 51200
+
+! Guardar configuración
+do write memory
+do copy running-config startup-config
+
+! Comandos útiles para verificar:
+! show cdp neighbors
+! show cdp neighbors detail
+! show cdp traffic
+! show cdp interface
+! show processes cpu sorted
+! show logging
+
+end
