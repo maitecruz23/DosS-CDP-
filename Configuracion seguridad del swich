@@ -1,0 +1,185 @@
+! Configuración de Seguridad para Switch Cisco
+! Prevención de ataques ARP Spoofing mediante DAI y Port Security
+! Fecha: Febrero 2026
+
+enable
+configure terminal
+
+! ============================================
+! PARTE 1: DHCP Snooping (prerequisito para DAI)
+! ============================================
+
+! Habilitar DHCP Snooping globalmente
+ip dhcp snooping
+ip dhcp snooping vlan 1
+
+! Configurar puerto trunk hacia el router como confiable
+interface GigabitEthernet0/0
+ description Trunk to Router R1
+ ip dhcp snooping trust
+ exit
+
+! Puertos de acceso no son confiables por defecto
+! (Gi0/1 - Ubuntu, Gi0/2 - Kali)
+
+! ============================================
+! PARTE 2: Dynamic ARP Inspection (DAI)
+! ============================================
+
+! Habilitar DAI en VLAN 1
+ip arp inspection vlan 1
+
+! Configurar puerto confiable (uplink al router)
+interface GigabitEthernet0/0
+ ip arp inspection trust
+ exit
+
+! Configurar rate limiting en puertos de acceso
+interface GigabitEthernet0/1
+ description Ubuntu Victim
+ ip arp inspection limit rate 15
+ exit
+
+interface GigabitEthernet0/2
+ description Kali Attacker
+ ip arp inspection limit rate 15
+ exit
+
+! Opcional: Validar source MAC
+ip arp inspection validate src-mac
+
+! Opcional: Validar destination MAC  
+ip arp inspection validate dst-mac
+
+! Opcional: Validar IP addresses
+ip arp inspection validate ip
+
+! ============================================
+! PARTE 3: Port Security
+! ============================================
+
+! Configurar Port Security en puerto de la víctima
+interface GigabitEthernet0/1
+ switchport mode access
+ switchport access vlan 1
+ switchport port-security
+ switchport port-security maximum 2
+ switchport port-security violation restrict
+ switchport port-security mac-address sticky
+ switchport port-security aging time 2
+ switchport port-security aging type inactivity
+ exit
+
+! Configurar Port Security en puerto del atacante
+interface GigabitEthernet0/2
+ switchport mode access
+ switchport access vlan 1
+ switchport port-security
+ switchport port-security maximum 2
+ switchport port-security violation restrict
+ switchport port-security mac-address sticky
+ exit
+
+! ============================================
+! PARTE 4: Logging y Monitoreo
+! ============================================
+
+! Habilitar logging para eventos de seguridad
+logging console informational
+logging buffered 51200 warnings
+
+! Habilitar traps SNMP para eventos de seguridad
+snmp-server enable traps port-security
+snmp-server enable traps arp-inspection
+
+! ============================================
+! PARTE 5: Configuración adicional de seguridad
+! ============================================
+
+! Deshabilitar CDP en puertos de acceso (opcional)
+interface range GigabitEthernet0/1-2
+ no cdp enable
+ exit
+
+! Habilitar BPDU Guard en puertos de acceso
+interface range GigabitEthernet0/1-2
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+ exit
+
+! Deshabilitar DTP (Dynamic Trunking Protocol)
+interface range GigabitEthernet0/1-2
+ switchport mode access
+ switchport nonegotiate
+ exit
+
+! ============================================
+! GUARDAR CONFIGURACIÓN
+! ============================================
+
+end
+write memory
+copy running-config startup-config
+
+! ============================================
+! COMANDOS DE VERIFICACIÓN
+! ============================================
+
+! Verificar DHCP Snooping
+! show ip dhcp snooping
+! show ip dhcp snooping binding
+
+! Verificar DAI
+! show ip arp inspection
+! show ip arp inspection statistics vlan 1
+! show ip arp inspection interfaces
+
+! Verificar Port Security
+! show port-security
+! show port-security interface gi0/1
+! show port-security address
+
+! Ver tabla ARP del switch
+! show ip arp
+
+! Ver logs de eventos
+! show logging
+
+! Monitorear eventos en tiempo real
+! terminal monitor
+! debug ip arp inspection
+
+! ============================================
+! COMANDOS PARA RESOLVER PROBLEMAS
+! ============================================
+
+! Si necesitas resetear Port Security después de una violación:
+! interface GigabitEthernet0/1
+!  shutdown
+!  no shutdown
+!  exit
+
+! Para borrar entradas DHCP Snooping:
+! clear ip dhcp snooping binding
+
+! Para deshabilitar DAI temporalmente:
+! no ip arp inspection vlan 1
+
+! ============================================
+! NOTAS IMPORTANTES
+! ============================================
+
+! 1. DAI requiere DHCP Snooping habilitado
+! 2. Los puertos trunk DEBEN ser configurados como trusted
+! 3. Rate limiting previene DoS de paquetes ARP
+! 4. Port Security limita el número de MACs por puerto
+! 5. Sticky MAC learning aprende MACs automáticamente
+
+! ============================================
+! TESTING DE LA CONFIGURACIÓN
+! ============================================
+
+! Para probar que DAI está funcionando:
+! 1. Ejecutar el script ARP MitM
+! 2. Ver los drops en: show ip arp inspection statistics
+! 3. Ver logs: show logging | include ARP
